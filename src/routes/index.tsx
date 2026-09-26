@@ -47,7 +47,7 @@ function Studio() {
 
   useEffect(() => {
     if (!playing) return;
-    const t = setTimeout(() => setActive((a) => (a + 1) % SCENES.length), SCENES[active].dur * 700);
+    const t = setTimeout(() => setActive((a) => (a + 1) % SCENES.length), SCENES[active]!.dur * 700);
     return () => clearTimeout(t);
   }, [playing, active]);
 
@@ -130,7 +130,7 @@ function Studio() {
         <section className="order-1 space-y-4 md:order-2">
           <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-muted shadow-glow">
             {done ? (
-              <img key={active} src={SCENES[active].img} alt={SCENES[active].title} width={1088} height={608} className="animate-rise size-full object-cover" />
+              <img key={active} src={SCENES[active]!.img} alt={SCENES[active]!.title} width={1088} height={608} className="animate-rise size-full object-cover" />
             ) : (
               <div className="grid size-full place-items-center text-center">
                 {running ? (
@@ -149,7 +149,7 @@ function Studio() {
               </div>
             )}
             {done && (
-              <p className="absolute inset-x-0 bottom-12 px-6 text-center font-display text-sm font-semibold text-foreground drop-shadow-lg md:text-lg">{SCENES[active].line}</p>
+              <p className="absolute inset-x-0 bottom-12 px-6 text-center font-display text-sm font-semibold text-foreground drop-shadow-lg md:text-lg">{SCENES[active]!.line}</p>
             )}
             {done && (
               <div className="absolute inset-x-0 bottom-0 flex items-center gap-3 bg-background/70 px-3 py-2 backdrop-blur">
