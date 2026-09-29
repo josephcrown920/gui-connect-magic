@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiAgentRouteImport } from './routes/api/agent'
 import { Route as ApiImageRouteImport } from './routes/api/image'
 import { Route as ApiVideoRouteImport } from './routes/api/video'
 import { Route as ApiVideoIdRouteImport } from './routes/api/video.$id'
@@ -18,6 +19,11 @@ import { Route as ApiVideoIdContentRouteImport } from './routes/api/video.$id.co
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAgentRoute = ApiAgentRouteImport.update({
+  id: '/api/agent',
+  path: '/api/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiImageRoute = ApiImageRouteImport.update({
@@ -43,6 +49,7 @@ const ApiVideoIdContentRoute = ApiVideoIdContentRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/agent': typeof ApiAgentRoute
   '/api/image': typeof ApiImageRoute
   '/api/video': typeof ApiVideoRouteWithChildren
   '/api/video/$id': typeof ApiVideoIdRouteWithChildren
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/agent': typeof ApiAgentRoute
   '/api/image': typeof ApiImageRoute
   '/api/video': typeof ApiVideoRouteWithChildren
   '/api/video/$id': typeof ApiVideoIdRouteWithChildren
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/agent': typeof ApiAgentRoute
   '/api/image': typeof ApiImageRoute
   '/api/video': typeof ApiVideoRouteWithChildren
   '/api/video/$id': typeof ApiVideoIdRouteWithChildren
@@ -67,6 +76,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/api/agent'
     | '/api/image'
     | '/api/video'
     | '/api/video/$id'
@@ -74,6 +84,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/api/agent'
     | '/api/image'
     | '/api/video'
     | '/api/video/$id'
@@ -81,6 +92,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/api/agent'
     | '/api/image'
     | '/api/video'
     | '/api/video/$id'
@@ -89,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiAgentRoute: typeof ApiAgentRoute
   ApiImageRoute: typeof ApiImageRoute
   ApiVideoRoute: typeof ApiVideoRouteWithChildren
 }
@@ -100,6 +113,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/agent': {
+      id: '/api/agent'
+      path: '/api/agent'
+      fullPath: '/api/agent'
+      preLoaderRoute: typeof ApiAgentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/image': {
@@ -159,6 +179,7 @@ const ApiVideoRouteWithChildren = ApiVideoRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiAgentRoute: ApiAgentRoute,
   ApiImageRoute: ApiImageRoute,
   ApiVideoRoute: ApiVideoRouteWithChildren,
 }
