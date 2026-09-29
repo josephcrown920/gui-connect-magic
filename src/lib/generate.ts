@@ -44,7 +44,7 @@ export async function generateVideo(
   prompt: string,
   engine: string,
   motion: string,
-  opts: { image?: Blob; duration?: string; onStatus?: (s: string) => void } = {},
+  opts: { image?: Blob | undefined; duration?: string; onStatus?: (s: string) => void } = {},
 ): Promise<string> {
   const body: Record<string, unknown> = { prompt, engine, motion, duration: opts.duration ?? "6s" };
   if (opts.image) body["image"] = await fileToMedia(opts.image);

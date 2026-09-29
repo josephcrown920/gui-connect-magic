@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 type NodeType = "prompt" | "upload" | "image" | "video";
 type Node = {
   id: string; type: NodeType; x: number; y: number;
-  text?: string; url?: string; engine?: string;
-  busy?: boolean; status?: string; error?: string;
+  text?: string | undefined; url?: string | undefined; engine?: string | undefined;
+  busy?: boolean; status?: string | undefined; error?: string | undefined;
 };
 type Edge = { from: string; to: string };
 
