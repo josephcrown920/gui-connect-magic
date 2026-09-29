@@ -16,7 +16,7 @@ export const Route = createFileRoute("/api/video")({
         if (b.image) parts.push({ type: "image", data: b.image.data, mime_type: b.image.mime });
         if (b.video) parts.push({ type: "video", data: b.video.data, mime_type: b.video.mime });
         const response_format: Record<string, string> = { type: "video", resolution: "720p", duration: b.duration ?? "6s" };
-        if (!b.video) response_format.aspect_ratio = "16:9";
+        if (!b.video) response_format["aspect_ratio"] = "16:9";
         return passthrough(
           await fetch(`${GATEWAY}/v1/videos`, {
             method: "POST",
