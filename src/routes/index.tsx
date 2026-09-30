@@ -568,6 +568,19 @@ function Editor() {
                   ))}
                 </div>
               </div>
+              <div>
+                <p className="mb-1 text-[10px] text-muted-foreground">Effect presets</p>
+                <div className="flex flex-wrap gap-1">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      title={p.hint}
+                      onClick={() => setClips((cs) => cs.map((c) => (c.id === selected.id ? { ...c, filter: p.filter ?? c.filter, speed: p.speed ?? c.speed, opacity: p.opacity ?? c.opacity } : c)))}
+                      className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary hover:text-foreground"
+                    >{p.label}</button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => splitAt(selected, playhead)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-secondary py-1.5 text-[11px] transition hover:bg-muted"><Scissors className="size-3" /> Split</button>
                 <button onClick={() => { setClips((cs) => cs.filter((c) => c.id !== selected.id)); setSel(null); }} className="flex items-center justify-center gap-1 rounded-lg bg-secondary px-2 py-1.5 text-[11px] text-destructive transition hover:bg-muted"><Trash2 className="size-3" /></button>
@@ -610,6 +623,7 @@ function Editor() {
           </form>
         </section>
       </main>
+      )}
     </div>
   );
 }
