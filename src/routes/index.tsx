@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Clapperboard, Send, Loader2, Play, Pause, Scissors, MousePointer2, Upload, Plus, Trash2,
-  ZoomIn, ZoomOut, Sparkles, Volume2, Eye, Gauge, Wand2, SkipBack,
+  ZoomIn, ZoomOut, Sparkles, Volume2, Eye, Gauge, Wand2, SkipBack, Download, Film,
 } from "lucide-react";
 import { AGENTS, TRACKS, TRACK_LABEL, agentById, type AgentAction, type TrackId } from "@/lib/agents";
+import {
+  IMAGE_ENGINES, VIDEO_ENGINES, DEFAULT_IMAGE_ENGINE, DEFAULT_VIDEO_ENGINE,
+  CAMERA_MOVES, MOTION_CURVES, DEFAULT_MOTION, motionPhrase, FILTERS, PRESETS,
+  type Motion,
+} from "@/lib/engines";
+import { generateImage, generateVideo } from "@/lib/generate";
+import { renderTimeline, download } from "@/lib/export";
+import { NodeCanvas } from "@/components/NodeCanvas";
 import { cn } from "@/lib/utils";
 import scene1 from "@/assets/scene1.jpg";
 import scene2 from "@/assets/scene2.jpg";
@@ -31,15 +39,6 @@ type Clip = {
   name: string; volume: number; opacity: number; speed: number; filter: string;
 };
 type Msg = { role: "user" | "assistant"; text: string; steps?: string[]; agent?: string };
-
-const FILTERS: Record<string, string> = {
-  none: "none",
-  warm: "saturate(1.2) sepia(.25) hue-rotate(-12deg)",
-  cool: "saturate(1.1) hue-rotate(15deg) brightness(1.03)",
-  mono: "grayscale(1) contrast(1.1)",
-  contrast: "contrast(1.35) saturate(1.1)",
-  dreamy: "blur(.6px) brightness(1.08) saturate(1.2)",
-};
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 const tc = (s: number) => {
@@ -80,6 +79,12 @@ function Editor() {
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
+  const [mode, setMode] = useState<"edit" | "canvas">("edit");
+  const [imgEngine, setImgEngine] = useState(DEFAULT_IMAGE_ENGINE);
+  const [vidEngine, setVidEngine] = useState(DEFAULT_VIDEO_ENGINE);
+  const [motion, setMotion] = useState<Motion>(DEFAULT_MOTION);
+  const [exporting, setExporting] = useState(false);
+  const [exportPct, setExportPct] = useState(0);
   const laneRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -179,18 +184,55 @@ function Editor() {
     const p = brief.trim() || "cinematic b-roll insert, shallow depth of field, moody light";
     setGenBusy(true);
     try {
-      const r = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: p }) });
-      const d = (await r.json()) as { data?: { b64_json?: string; url?: string }[]; error?: { message?: string } };
-      const item = d.data?.[0];
-      const url = item?.b64_json ? `data:image/png;base64,${item.b64_json}` : item?.url;
-      if (!url) throw new Error(d.error?.message ?? "no image");
+      const url = await generateImage(p, imgEngine);
       const a: Asset = { id: uid(), name: `gen_${uid()}.png`, kind: "image", url, dur: 4 };
       setAssets((x) => [...x, a]);
       setMsgs((m) => [...m, { role: "assistant", agent, text: "Generated a b-roll plate and dropped it in the bin.", steps: [`Generated "${p.slice(0, 48)}"`] }]);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", agent, text: "Couldn't generate that plate — the AI service didn't return an image." }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: `Couldn't generate that plate — ${e instanceof Error ? e.message : "the AI service didn't return an image."}` }]);
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  async function generateClip() {
+    const p = brief.trim() || "cinematic motion shot, moody light";
+    setGenBusy(true);
+    try {
+      const url = await generateVideo(p, vidEngine, motionPhrase(motion), { onStatus: (s) => setMsgs((m) => [...m.slice(0, -1), { ...m[m.length - 1]!, text: `Rendering video… ${s}` }]) });
+      const a: Asset = { id: uid(), name: `clip_${uid()}.mp4`, kind: "video", url, dur: 6 };
+      setAssets((x) => [...x, a]);
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Rendered a video clip and dropped it in the bin.", steps: [`Motion: ${motionPhrase(motion)}`] }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: `Video render failed — ${e instanceof Error ? e.message : "unknown error"}` }]);
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  function addAsset(url: string, kind: "image" | "video", name: string) {
+    setAssets((x) => [...x, { id: uid(), name, kind, url, dur: kind === "video" ? 6 : 4 }]);
+    setMsgs((m) => [...m, { role: "assistant", agent, text: `Pulled ${name} from the canvas into the bin.` }]);
+  }
+
+  async function exportVideo() {
+    if (!clips.length || exporting) return;
+    setPlaying(false);
+    setExporting(true);
+    setExportPct(0);
+    try {
+      const blob = await renderTimeline(
+        clips.map((c) => ({ assetId: c.assetId, track: c.track, start: c.start, dur: c.dur, inPoint: c.inPoint, opacity: c.opacity, speed: c.speed, volume: c.volume, filterCss: FILTERS[c.filter] ?? "none" })),
+        assets.map((a) => ({ id: a.id, kind: a.kind, url: a.url })),
+        duration,
+        setExportPct,
+      );
+      download(blob, "reel-edit.webm");
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Exported your cut as a WebM file — check your downloads." }]);
+    } catch {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Export failed — your browser may not support recording. Try Chrome or Edge." }]);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -326,11 +368,21 @@ function Editor() {
           <span className="font-display text-base font-bold tracking-tight">Reel</span>
           <span className="hidden rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground sm:inline">Semantic editor 1.1</span>
         </div>
-        <button onClick={() => setPickerOpen((o) => !o)} className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:border-primary">
-          <span className="grid size-5 place-items-center rounded-full font-mono text-[9px] font-bold text-primary-foreground" style={{ background: active.accent }}>{active.short}</span>
-          <span className="font-medium">{active.name}</span>
-          <Sparkles className="size-3 text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full border border-border p-0.5 text-[11px]">
+            <button onClick={() => setMode("edit")} className={cn("rounded-full px-2.5 py-1 transition", mode === "edit" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Editor</button>
+            <button onClick={() => setMode("canvas")} className={cn("rounded-full px-2.5 py-1 transition", mode === "canvas" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Canvas</button>
+          </div>
+          <button onClick={() => void exportVideo()} disabled={exporting || !clips.length} className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40">
+            {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {exporting ? `${Math.round(exportPct * 100)}%` : "Export"}
+          </button>
+          <button onClick={() => setPickerOpen((o) => !o)} className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:border-primary">
+            <span className="grid size-5 place-items-center rounded-full font-mono text-[9px] font-bold text-primary-foreground" style={{ background: active.accent }}>{active.short}</span>
+            <span className="hidden font-medium sm:inline">{active.name}</span>
+            <Sparkles className="size-3 text-muted-foreground" />
+          </button>
+        </div>
       </header>
 
       {pickerOpen && (
@@ -355,7 +407,12 @@ function Editor() {
         </div>
       )}
 
-      <main className="grid flex-1 gap-3 p-3 lg:grid-cols-[260px_1fr_240px]">
+      {mode === "canvas" ? (
+        <main className="flex-1 p-3">
+          <NodeCanvas motion={motion} onAsset={addAsset} />
+        </main>
+      ) : (
+      <main className="grid flex-1 gap-3 p-3 lg:grid-cols-[280px_1fr_240px]">
         {/* media bin */}
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between">
@@ -373,6 +430,31 @@ function Editor() {
           <button onClick={() => void generateBroll()} disabled={genBusy} className="flex items-center justify-center gap-2 rounded-lg bg-secondary py-2 text-xs font-medium transition hover:bg-muted disabled:opacity-50">
             {genBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />} Generate b-roll plate
           </button>
+          <div className="space-y-2 rounded-lg border border-border p-2">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Models</p>
+            <select value={imgEngine} onChange={(e) => setImgEngine(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {IMAGE_ENGINES.map((en) => <option key={en.id} value={en.id} disabled={!en.available}>{en.name}{en.available ? "" : " (unavailable)"}</option>)}
+            </select>
+            <select value={vidEngine} onChange={(e) => setVidEngine(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {VIDEO_ENGINES.map((en) => <option key={en.id} value={en.id} disabled={!en.available}>{en.name}{en.available ? "" : " (unavailable)"}</option>)}
+            </select>
+            <p className="pt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Motion control</p>
+            <select value={motion.move} onChange={(e) => setMotion((m) => ({ ...m, move: e.target.value }))} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {CAMERA_MOVES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <Slider icon={<Gauge className="size-3" />} label="Intensity" value={motion.intensity} min={1} max={10} step={1} onChange={(v) => setMotion((m) => ({ ...m, intensity: v }))} />
+            <div className="flex gap-1.5">
+              <select value={motion.curve} onChange={(e) => setMotion((m) => ({ ...m, curve: e.target.value }))} className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+                {MOTION_CURVES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+              <select value={motion.fps} onChange={(e) => setMotion((m) => ({ ...m, fps: Number(e.target.value) }))} className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+                {[24, 30, 60].map((f) => <option key={f} value={f}>{f}fps</option>)}
+              </select>
+            </div>
+            <button onClick={() => void generateClip()} disabled={genBusy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+              {genBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Film className="size-3.5" />} Generate video clip
+            </button>
+          </div>
           <div className="grid max-h-[220px] grid-cols-2 gap-2 overflow-y-auto lg:max-h-none lg:grid-cols-1">
             {assets.map((a) => (
               <div key={a.id} className="group flex items-center gap-2 rounded-lg border border-border p-1.5">
@@ -486,6 +568,19 @@ function Editor() {
                   ))}
                 </div>
               </div>
+              <div>
+                <p className="mb-1 text-[10px] text-muted-foreground">Effect presets</p>
+                <div className="flex flex-wrap gap-1">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      title={p.hint}
+                      onClick={() => setClips((cs) => cs.map((c) => (c.id === selected.id ? { ...c, filter: p.filter ?? c.filter, speed: p.speed ?? c.speed, opacity: p.opacity ?? c.opacity } : c)))}
+                      className="rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition hover:border-primary hover:text-foreground"
+                    >{p.label}</button>
+                  ))}
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button onClick={() => splitAt(selected, playhead)} className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-secondary py-1.5 text-[11px] transition hover:bg-muted"><Scissors className="size-3" /> Split</button>
                 <button onClick={() => { setClips((cs) => cs.filter((c) => c.id !== selected.id)); setSel(null); }} className="flex items-center justify-center gap-1 rounded-lg bg-secondary px-2 py-1.5 text-[11px] text-destructive transition hover:bg-muted"><Trash2 className="size-3" /></button>
@@ -528,6 +623,7 @@ function Editor() {
           </form>
         </section>
       </main>
+      )}
     </div>
   );
 }
