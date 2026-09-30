@@ -184,18 +184,55 @@ function Editor() {
     const p = brief.trim() || "cinematic b-roll insert, shallow depth of field, moody light";
     setGenBusy(true);
     try {
-      const r = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: p }) });
-      const d = (await r.json()) as { data?: { b64_json?: string; url?: string }[]; error?: { message?: string } };
-      const item = d.data?.[0];
-      const url = item?.b64_json ? `data:image/png;base64,${item.b64_json}` : item?.url;
-      if (!url) throw new Error(d.error?.message ?? "no image");
+      const url = await generateImage(p, imgEngine);
       const a: Asset = { id: uid(), name: `gen_${uid()}.png`, kind: "image", url, dur: 4 };
       setAssets((x) => [...x, a]);
       setMsgs((m) => [...m, { role: "assistant", agent, text: "Generated a b-roll plate and dropped it in the bin.", steps: [`Generated "${p.slice(0, 48)}"`] }]);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", agent, text: "Couldn't generate that plate — the AI service didn't return an image." }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: `Couldn't generate that plate — ${e instanceof Error ? e.message : "the AI service didn't return an image."}` }]);
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  async function generateClip() {
+    const p = brief.trim() || "cinematic motion shot, moody light";
+    setGenBusy(true);
+    try {
+      const url = await generateVideo(p, vidEngine, motionPhrase(motion), { onStatus: (s) => setMsgs((m) => [...m.slice(0, -1), { ...m[m.length - 1]!, text: `Rendering video… ${s}` }]) });
+      const a: Asset = { id: uid(), name: `clip_${uid()}.mp4`, kind: "video", url, dur: 6 };
+      setAssets((x) => [...x, a]);
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Rendered a video clip and dropped it in the bin.", steps: [`Motion: ${motionPhrase(motion)}`] }]);
+    } catch (e) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: `Video render failed — ${e instanceof Error ? e.message : "unknown error"}` }]);
+    } finally {
+      setGenBusy(false);
+    }
+  }
+
+  function addAsset(url: string, kind: "image" | "video", name: string) {
+    setAssets((x) => [...x, { id: uid(), name, kind, url, dur: kind === "video" ? 6 : 4 }]);
+    setMsgs((m) => [...m, { role: "assistant", agent, text: `Pulled ${name} from the canvas into the bin.` }]);
+  }
+
+  async function exportVideo() {
+    if (!clips.length || exporting) return;
+    setPlaying(false);
+    setExporting(true);
+    setExportPct(0);
+    try {
+      const blob = await renderTimeline(
+        clips.map((c) => ({ assetId: c.assetId, track: c.track, start: c.start, dur: c.dur, inPoint: c.inPoint, opacity: c.opacity, speed: c.speed, volume: c.volume, filterCss: FILTERS[c.filter] ?? "none" })),
+        assets.map((a) => ({ id: a.id, kind: a.kind, url: a.url })),
+        duration,
+        setExportPct,
+      );
+      download(blob, "reel-edit.webm");
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Exported your cut as a WebM file — check your downloads." }]);
+    } catch {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: "Export failed — your browser may not support recording. Try Chrome or Edge." }]);
+    } finally {
+      setExporting(false);
     }
   }
 
