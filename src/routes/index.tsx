@@ -368,11 +368,21 @@ function Editor() {
           <span className="font-display text-base font-bold tracking-tight">Reel</span>
           <span className="hidden rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] uppercase text-muted-foreground sm:inline">Semantic editor 1.1</span>
         </div>
-        <button onClick={() => setPickerOpen((o) => !o)} className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:border-primary">
-          <span className="grid size-5 place-items-center rounded-full font-mono text-[9px] font-bold text-primary-foreground" style={{ background: active.accent }}>{active.short}</span>
-          <span className="font-medium">{active.name}</span>
-          <Sparkles className="size-3 text-muted-foreground" />
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full border border-border p-0.5 text-[11px]">
+            <button onClick={() => setMode("edit")} className={cn("rounded-full px-2.5 py-1 transition", mode === "edit" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Editor</button>
+            <button onClick={() => setMode("canvas")} className={cn("rounded-full px-2.5 py-1 transition", mode === "canvas" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}>Canvas</button>
+          </div>
+          <button onClick={() => void exportVideo()} disabled={exporting || !clips.length} className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40">
+            {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            {exporting ? `${Math.round(exportPct * 100)}%` : "Export"}
+          </button>
+          <button onClick={() => setPickerOpen((o) => !o)} className="flex items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1.5 text-xs transition hover:border-primary">
+            <span className="grid size-5 place-items-center rounded-full font-mono text-[9px] font-bold text-primary-foreground" style={{ background: active.accent }}>{active.short}</span>
+            <span className="hidden font-medium sm:inline">{active.name}</span>
+            <Sparkles className="size-3 text-muted-foreground" />
+          </button>
+        </div>
       </header>
 
       {pickerOpen && (
