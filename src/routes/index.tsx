@@ -407,7 +407,12 @@ function Editor() {
         </div>
       )}
 
-      <main className="grid flex-1 gap-3 p-3 lg:grid-cols-[260px_1fr_240px]">
+      {mode === "canvas" ? (
+        <main className="flex-1 p-3">
+          <NodeCanvas motion={motion} onAsset={addAsset} />
+        </main>
+      ) : (
+      <main className="grid flex-1 gap-3 p-3 lg:grid-cols-[280px_1fr_240px]">
         {/* media bin */}
         <section className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between">
@@ -425,6 +430,31 @@ function Editor() {
           <button onClick={() => void generateBroll()} disabled={genBusy} className="flex items-center justify-center gap-2 rounded-lg bg-secondary py-2 text-xs font-medium transition hover:bg-muted disabled:opacity-50">
             {genBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />} Generate b-roll plate
           </button>
+          <div className="space-y-2 rounded-lg border border-border p-2">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Models</p>
+            <select value={imgEngine} onChange={(e) => setImgEngine(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {IMAGE_ENGINES.map((en) => <option key={en.id} value={en.id} disabled={!en.available}>{en.name}{en.available ? "" : " (unavailable)"}</option>)}
+            </select>
+            <select value={vidEngine} onChange={(e) => setVidEngine(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {VIDEO_ENGINES.map((en) => <option key={en.id} value={en.id} disabled={!en.available}>{en.name}{en.available ? "" : " (unavailable)"}</option>)}
+            </select>
+            <p className="pt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Motion control</p>
+            <select value={motion.move} onChange={(e) => setMotion((m) => ({ ...m, move: e.target.value }))} className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+              {CAMERA_MOVES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <Slider icon={<Gauge className="size-3" />} label="Intensity" value={motion.intensity} min={1} max={10} step={1} onChange={(v) => setMotion((m) => ({ ...m, intensity: v }))} />
+            <div className="flex gap-1.5">
+              <select value={motion.curve} onChange={(e) => setMotion((m) => ({ ...m, curve: e.target.value }))} className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+                {MOTION_CURVES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+              <select value={motion.fps} onChange={(e) => setMotion((m) => ({ ...m, fps: Number(e.target.value) }))} className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-[11px]">
+                {[24, 30, 60].map((f) => <option key={f} value={f}>{f}fps</option>)}
+              </select>
+            </div>
+            <button onClick={() => void generateClip()} disabled={genBusy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50">
+              {genBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Film className="size-3.5" />} Generate video clip
+            </button>
+          </div>
           <div className="grid max-h-[220px] grid-cols-2 gap-2 overflow-y-auto lg:max-h-none lg:grid-cols-1">
             {assets.map((a) => (
               <div key={a.id} className="group flex items-center gap-2 rounded-lg border border-border p-1.5">
