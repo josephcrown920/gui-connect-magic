@@ -79,6 +79,12 @@ function Editor() {
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
+  const [mode, setMode] = useState<"edit" | "canvas">("edit");
+  const [imgEngine, setImgEngine] = useState(DEFAULT_IMAGE_ENGINE);
+  const [vidEngine, setVidEngine] = useState(DEFAULT_VIDEO_ENGINE);
+  const [motion, setMotion] = useState<Motion>(DEFAULT_MOTION);
+  const [exporting, setExporting] = useState(false);
+  const [exportPct, setExportPct] = useState(0);
   const laneRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
