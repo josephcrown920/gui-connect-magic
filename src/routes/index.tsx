@@ -2,9 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Clapperboard, Send, Loader2, Play, Pause, Scissors, MousePointer2, Upload, Plus, Trash2,
-  ZoomIn, ZoomOut, Sparkles, Volume2, Eye, Gauge, Wand2, SkipBack,
+  ZoomIn, ZoomOut, Sparkles, Volume2, Eye, Gauge, Wand2, SkipBack, Download, Film,
 } from "lucide-react";
 import { AGENTS, TRACKS, TRACK_LABEL, agentById, type AgentAction, type TrackId } from "@/lib/agents";
+import {
+  IMAGE_ENGINES, VIDEO_ENGINES, DEFAULT_IMAGE_ENGINE, DEFAULT_VIDEO_ENGINE,
+  CAMERA_MOVES, MOTION_CURVES, DEFAULT_MOTION, motionPhrase, FILTERS, PRESETS,
+  type Motion,
+} from "@/lib/engines";
+import { generateImage, generateVideo } from "@/lib/generate";
+import { renderTimeline, download } from "@/lib/export";
+import { NodeCanvas } from "@/components/NodeCanvas";
 import { cn } from "@/lib/utils";
 import scene1 from "@/assets/scene1.jpg";
 import scene2 from "@/assets/scene2.jpg";
@@ -31,15 +39,6 @@ type Clip = {
   name: string; volume: number; opacity: number; speed: number; filter: string;
 };
 type Msg = { role: "user" | "assistant"; text: string; steps?: string[]; agent?: string };
-
-const FILTERS: Record<string, string> = {
-  none: "none",
-  warm: "saturate(1.2) sepia(.25) hue-rotate(-12deg)",
-  cool: "saturate(1.1) hue-rotate(15deg) brightness(1.03)",
-  mono: "grayscale(1) contrast(1.1)",
-  contrast: "contrast(1.35) saturate(1.1)",
-  dreamy: "blur(.6px) brightness(1.08) saturate(1.2)",
-};
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 const tc = (s: number) => {
