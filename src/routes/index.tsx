@@ -1,3 +1,4 @@
+import { attachMedia } from "@/lib/attach-media";
 import { studioFetch } from "@/lib/studio-client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -80,6 +81,7 @@ function Editor() {
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "assistant", agent: "astra", text: "I'm your co-editor. Drop your footage in the bin on the left, then tell me the cut you want — I'll lay it on the timeline and we iterate from there." },
   ]);
+  const [contextAssetId, setContextAssetId] = useState("");
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
@@ -337,14 +339,18 @@ function Editor() {
     const t = text.trim();
     if (!t || busy) return;
     setBrief("");
-    setMsgs((m) => [...m, { role: "user", text: t }]);
+    const contextAsset = assets.find(a => a.id === contextAssetId && a.kind !== "audio");
+    const requestAgent = contextAsset ? "omni-reader" : agent;
+    if (contextAsset) setAgent(requestAgent);
+    setMsgs((m) => [...m, { role: "user", text: contextAsset ? `${t} (Attached: ${contextAsset.name})` : t }]);
     setBusy(true);
     try {
+      const attachments = contextAsset && contextAsset.kind !== "audio" ? [await attachMedia({ ...contextAsset, kind: contextAsset.kind })] : [];
       const r = await studioFetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agent, brief: t,
+          agent: requestAgent, brief: t, attachments,
           history: msgs.slice(-8).map((m) => ({ role: m.role, text: m.text })),
           assets: assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, dur: a.dur })),
           clips: clips.map((c) => ({ id: c.id, assetId: c.assetId, track: c.track, start: c.start, dur: c.dur })),
@@ -353,7 +359,7 @@ function Editor() {
       const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[]; error?: { message?: string } };
       if (!r.ok) throw new Error(d.error?.message ?? d.reply ?? "The editing agent could not respond.");
       if (d.actions?.length) applyActions(d.actions);
-      setMsgs((m) => [...m, { role: "assistant", agent, text: d.reply, steps: d.steps }]);
+      setMsgs((m) => [...m, { role: "assistant", agent: requestAgent, text: d.reply, steps: d.steps }]);
     } catch (error) {
       setMsgs((m) => [...m, { role: "assistant", agent, text: error instanceof Error ? error.message : "I lost connection to the editing brain. Try that again." }]);
     } finally {
@@ -631,6 +637,13 @@ function Editor() {
               <button key={r} onClick={() => void send(r)} className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-primary hover:text-foreground">{r}</button>
             ))}
           </div>
+          <label className="border-t border-border px-3 py-2 text-xs text-muted-foreground">Media to inspect · Qwen Omni
+            <select aria-label="Attach image or video for understanding" value={contextAssetId} disabled={busy} onChange={e => { setContextAssetId(e.target.value); if (e.target.value) setAgent("omni-reader"); }} className="mt-1 w-full rounded border border-border bg-background p-2">
+              <option value="">Text only · no attachment</option>
+              {assets.filter(a => a.kind !== "audio").map(a => <option key={a.id} value={a.id}>{a.name} · {a.kind}</option>)}
+            </select>
+            <span className="mt-1 block">Upload media to the bin, then select it here. Max 20 MB; attached media is sent again with each message.</span>
+          </label>
           <form onSubmit={(e) => { e.preventDefault(); void send(brief); }} className="flex items-center gap-2 border-t border-border p-2.5">
             <input value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Tell your co-editor what to cut…" className="flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground" />
             <button type="submit" disabled={busy || !brief.trim()} className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-40"><Send className="size-4" /></button>

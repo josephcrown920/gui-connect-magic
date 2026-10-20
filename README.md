@@ -76,3 +76,18 @@ selected models. These were not available for live testing in this workspace.
 
 Checks (Node 22.6+): `npm test`, `npx tsc --noEmit`, and `npm run build`.
 The automated tests use mocked providers; they do not spend generation credits.
+
+## Multimodal Omni chat
+
+Choose **Qwen Omni · Understand** in the co-editor for text responses and native
+image/video understanding through `qwen/qwen3.8-omni-flash` on OpenRouter. This is
+separate from the Gemini/Kling Omni video-generation engines. Upload an image or
+video into the media bin and select it under **Media to inspect**. Selecting media
+automatically chooses the understanding model. Each chat message resends the
+selected attachment; clear the selector for text-only chat. Images must be
+PNG/JPEG/WebP and videos MP4/WebM/MPEG/MOV, under 20 MB each. For longer footage,
+trim it first. Media is encoded as private data URLs rather than passing local
+blob URLs to the provider. Provider limits and multimodal token charges apply.
+Attachments are inspected for the current conversation turn; they do not become
+persistent cloud media or automatically enter the production director's context.
+Live understanding remains unverified without a configured OpenRouter key.

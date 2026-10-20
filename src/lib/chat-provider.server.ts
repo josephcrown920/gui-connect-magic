@@ -1,3 +1,4 @@
+import type { ChatMessage } from "./multimodal.ts";
 export type ChatTarget = { url: string; key: string; provider: string };
 export function chatTarget(preferred: "auto" | "openrouter" | "lovable" = "auto"): ChatTarget {
   if (preferred === "openrouter" || (preferred === "auto" && process.env["OPENROUTER_API_KEY"])) {
@@ -30,7 +31,7 @@ export function plannerModel(id: string | undefined) {
 export async function chatCompletion(
   target: ChatTarget,
   model: string,
-  messages: { role: string; content: string }[],
+  messages: ChatMessage[],
   signal?: AbortSignal,
 ) {
   const response = await fetch(target.url, {
