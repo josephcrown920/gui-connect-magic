@@ -38,11 +38,41 @@ The previous timeline can be restored with **Undo production assembly**.
 - Narration is a written script. This flow does not synthesize voiceover, add music/captions, or perform background/cloud rendering. Export uses the existing browser WebM renderer.
 - Planning reasons from source names, kinds and durations, not visual analysis of uploaded footage.
 
-Configure `LOVABLE_API_KEY` on the server through Lovable's secret settings.
-Optionally set `STUDIO_PLANNER_MODEL` to a model supported by your gateway; the
-existing workspace orchestrator model is the default. Keys must never be placed
-in client-side `VITE_*` variables. Missing credentials return a clear 503 error.
-Live generation requires a connected provider, supported models and AI credits.
+Configure these **server runtime secrets** on the deployment host (see `.env.example`):
+
+- `OPENROUTER_API_KEY`: agent chat and the director/reviewer. Selected before Lovable when both are configured. There is no automatic retry on another paid provider after an error.
+- `FAL_KEY`: image, video, character animation and motion-transfer models.
+- `STUDIO_ACCESS_TOKEN`: at least 24 random characters, used as your owner access code. Paid API routes fail closed until configured. Enter this code in **Unlock studio**; only this studio code is kept in browser session storage, not provider keys. It is a single-owner gate, not a multi-user login/billing system.
+- `LOVABLE_API_KEY`: optional existing Lovable gateway integration. This is managed by Lovable when its AI integration is enabled.
+- `ARK_API_KEY`: optional existing ModelArk integration. Dola/Seed Pro still needs its exact service/endpoint identified.
+
+OpenRouter planners: Astra (default), DeepSeek V4.1 Flash, Claude Sonnet 5,
+Qwen 3.8 Flash, and MiniMax M3. Model IDs can be overridden with the
+`STUDIO_<AGENT>_MODEL` names in `.env.example`. The catalog IDs and fal input schemas
+were checked against the public provider APIs on October 20, 2026.
+
+Media choices: GPT Image 2.5 Sunburst (default), Seedream 5.0 Pro, GPT Image 2,
+FLUX.2 Pro, Seedance 2.5 (default video), Wan 2.7, MiniMax H3 Max, LTX 2.3,
+Gemini Omni 1.1, and Kling Omni O3 Pro. Sunburst uses fal when FAL_KEY is configured;
+otherwise it retains the existing Lovable gateway path. Veo and other legacy
+gateway choices still require Lovable AI and provider model availability.
+
+The **Character performance** panel has dedicated image + audio inputs for
+OmniHuman 1.5 and image + reference video inputs for Kling 3 motion transfer.
+Completed results enter the media bin. In-flight performance jobs can resume in
+the same tab; unlike the main production draft, this panel's job state does not
+survive reload. Files must be under 10 MB (images) or 20 MB (audio/video), and
+provider-specific duration/format constraints still apply.
+
+fal videos use signed, seven-day job handles that restrict polling/downloading to
+known model endpoints. Rotating FAL_KEY invalidates old job handles. Drafts retain
+these handles for recovery; image-generation requests do not have the same retry
+guarantees. No provider key is returned to the browser. This implementation runs
+inside the studio's server; a separately hosted, cross-project AI service has not
+been deployed yet.
+
+Live generation requires the secrets, paid credits, and account access to the
+selected models. These were not available for live testing in this workspace.
 
 Checks (Node 22.6+): `npm test`, `npx tsc --noEmit`, and `npm run build`.
 The automated tests use mocked providers; they do not spend generation credits.

@@ -1,3 +1,4 @@
+import { studioFetch } from "./studio-client.ts";
 /** Browser helpers that call the app's own generation endpoints. */
 
 async function fileToMedia(file: Blob) {
@@ -35,9 +36,9 @@ export async function generateImage(
     form.set("prompt", prompt);
     form.set("engine", engine);
     form.set("image", source, "source.png");
-    r = await fetch("/api/image", { method: "POST", signal: signal ?? null, body: form });
+    r = await studioFetch("/api/image", { method: "POST", signal: signal ?? null, body: form });
   } else {
-    r = await fetch("/api/image", {
+    r = await studioFetch("/api/image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt, engine }),
@@ -64,6 +65,8 @@ export async function generateVideo(
   motion: string,
   opts: {
     image?: Blob | undefined;
+    audio?: Blob | undefined;
+    referenceVideo?: Blob | undefined;
     duration?: string;
     onStatus?: (s: string) => void;
     signal?: AbortSignal;
@@ -74,9 +77,11 @@ export async function generateVideo(
   opts.signal?.throwIfAborted();
   const body: Record<string, unknown> = { prompt, engine, motion, duration: opts.duration ?? "6s" };
   if (opts.image) body["image"] = await fileToMedia(opts.image);
+  if (opts.audio) body["audio"] = await fileToMedia(opts.audio);
+  if (opts.referenceVideo) body["referenceVideo"] = await fileToMedia(opts.referenceVideo);
   let jobId = opts.jobId;
   if (!jobId) {
-    const r = await fetch("/api/video", {
+    const r = await studioFetch("/api/video", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -101,7 +106,7 @@ export async function generateVideo(
       }, 5000);
       opts.signal?.addEventListener("abort", abort, { once: true });
     });
-    const poll = await fetch(`/api/video/${jobId}`, { signal: opts.signal ?? null });
+    const poll = await studioFetch(`/api/video/${jobId}`, { signal: opts.signal ?? null });
     const p = (await poll.json().catch(() => ({}))) as { status?: string; error?: unknown };
     if (!poll.ok) throw new Error(errMsg(p, `Could not check video job (${poll.status}).`));
     const s = (p.status ?? "").toLowerCase();
@@ -112,7 +117,7 @@ export async function generateVideo(
     if (Date.now() - started > 8 * 60 * 1000)
       throw new Error("Video took too long — try a shorter or simpler prompt.");
   }
-  const content = await fetch(`/api/video/${jobId}/content`, { signal: opts.signal ?? null });
+  const content = await studioFetch(`/api/video/${jobId}/content`, { signal: opts.signal ?? null });
   if (!content.ok)
     throw new Error("Could not download the generated video. Retry to download the same job.");
   const blob = await content.blob();

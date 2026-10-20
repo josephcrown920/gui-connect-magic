@@ -1,3 +1,4 @@
+import { saveStudioAccess, studioFetch } from "@/lib/studio-client";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, Square, RotateCcw } from "lucide-react";
 import {
@@ -22,6 +23,10 @@ type Props = {
   onAssemble: (assets: ProductionMedia[], clips: ReturnType<typeof assembleScenes>) => void;
 };
 export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAssemble }: Props) {
+  const [accessCode, setAccessCode] = useState("");
+  const [accessSaved, setAccessSaved] = useState(false);
+  const [planner, setPlanner] = useState("astra");
+  const [connections, setConnections] = useState<Record<string, boolean> | null>(null);
   const [brief, setBrief] = useState("");
   const [kind, setKind] = useState<"image" | "video">("image");
   const [run, setRun] = useState<ProductionRun | null>(null);
@@ -37,6 +42,12 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
+    void studioFetch("/api/agent")
+      .then((r) => r.json())
+      .then((d) => {
+        if (mounted.current) setConnections(d.providers);
+      })
+      .catch(() => {});
     void restoreProductionRun()
       .then((saved) => {
         if (!mounted.current || !saved) return;
@@ -89,12 +100,13 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
             [...assets, ...Object.values(run?.media ?? {})].map((a) => [a.id, a]),
           ).values(),
         ];
-        const response = await fetch("/api/agent", {
+        const response = await studioFetch("/api/agent", {
           method: "POST",
           signal: abort.signal,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             operation: "production",
+            planner,
             brief: brief.trim(),
             assets: sources.map(({ url: _url, ...a }) => a),
             ...(run ? { previousPlan: run.plan } : {}),
@@ -102,9 +114,13 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
         });
         const result = (await response.json().catch(() => ({}))) as {
           plan?: unknown;
-          error?: string;
+          error?: string | { message?: string };
         };
-        if (!response.ok) throw new Error(result.error ?? `Planning failed (${response.status}).`);
+        if (!response.ok)
+          throw new Error(
+            (typeof result.error === "string" ? result.error : result.error?.message) ??
+              `Planning failed (${response.status}).`,
+          );
         const plan = validatePlan(result.plan, sources);
         // Only persist the sources this plan actually uses.
         const used = sources.filter((a) =>
@@ -195,6 +211,41 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
         Create a visual first cut up to 60 seconds. Uses AI credits. Narration below is a script;
         voiceover and music are not generated.
       </p>
+      {connections && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {Object.entries(connections)
+            .map(([name, connected]) => `${name}: ${connected ? "configured" : "not connected"}`)
+            .join(" · ")}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input
+          type="password"
+          aria-label="Studio access code"
+          placeholder="Studio access code"
+          value={accessCode}
+          onChange={(e) => setAccessCode(e.target.value)}
+          className="rounded-lg border border-border bg-background p-2 text-xs"
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            saveStudioAccess(accessCode);
+            setAccessCode("");
+            setAccessSaved(true);
+          }}
+          disabled={!accessCode}
+          className="rounded-lg border border-border p-2 text-xs disabled:opacity-40"
+        >
+          Unlock studio
+        </button>
+        {accessSaved && (
+          <span role="status" className="text-xs text-muted-foreground">
+            Access code saved for this tab.
+          </span>
+        )}
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -212,6 +263,19 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
           className="min-h-20 w-full rounded-lg border border-border bg-background p-3 text-sm"
         />
         <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="Production planning agent"
+            value={planner}
+            disabled={running}
+            onChange={(e) => setPlanner(e.target.value)}
+            className="rounded-lg border border-border bg-background p-2 text-xs"
+          >
+            <option value="astra">Director: GPT-6 Astra</option>
+            <option value="deepseek">Director: DeepSeek</option>
+            <option value="claude">Director: Claude Sonnet</option>
+            <option value="qwen">Director: Qwen</option>
+            <option value="minimax">Director: MiniMax</option>
+          </select>
           <select
             aria-label="Generated scene format"
             value={kind}

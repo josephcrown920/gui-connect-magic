@@ -1,7 +1,9 @@
+import { authorizeStudio } from "@/lib/studio-access.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { GATEWAY, ARK_BASE, apiKey, arkKey } from "@/lib/gateway.server";
 import { AGENTS, agentById } from "@/lib/agents";
 import { planProduction } from "@/lib/production.server";
+import { chatTarget, chatCompletion, PLANNERS } from "@/lib/chat-provider.server";
 import { ZodError } from "zod";
 
 type Body = {
@@ -131,14 +133,14 @@ async function runAnthropic(model: string, key: string, system: string, user: st
 export const Route = createFileRoute("/api/agent")({
   server: {
     handlers: {
+      GET: async () => Response.json({ providers: { openrouter: Boolean(process.env["OPENROUTER_API_KEY"]), fal: Boolean(process.env["FAL_KEY"]), lovable: Boolean(process.env["LOVABLE_API_KEY"]), modelark: Boolean(process.env["ARK_API_KEY"]) }, planners: PLANNERS.map(({ id, name }) => ({ id, name })) }, { headers: { "Cache-Control": "no-store" } }),
       POST: async ({ request }) => {
+        const denied = await authorizeStudio(request); if (denied) return denied;
         let raw: unknown;
         try { raw = await request.json(); }
         catch { return Response.json({ error: "Invalid JSON request." }, { status: 400 }); }
         if ((raw as { operation?: string })?.operation === "production") {
-          const key = process.env["LOVABLE_API_KEY"];
-          if (!key) return Response.json({ error: "Connect Lovable AI before starting production." }, { status: 503 });
-          try { return Response.json(await planProduction(raw, key, request.signal)); }
+          try { return Response.json(await planProduction(raw, request.signal)); }
           catch (error) {
             return Response.json({ error: error instanceof ZodError ? "The scene plan was invalid. Try a clearer or shorter brief." : error instanceof Error ? error.message : "Production planning failed." }, { status: error instanceof ZodError ? 400 : 502 });
           }
@@ -161,6 +163,14 @@ export const Route = createFileRoute("/api/agent")({
         let out: { text?: string; error?: string; status?: number };
         if (agent.api === "modelark") {
           out = await runModelArk(agent.model, system, user, b.history);
+        } else if (agent.api === "openrouter" || process.env["OPENROUTER_API_KEY"]) {
+          try {
+            out = { text: await chatCompletion(chatTarget("openrouter"), agent.model, [
+              { role: "system", content: system },
+              ...(b.history ?? []).slice(-8).map(h => ({ role: h.role, content: h.text })),
+              { role: "user", content: user },
+            ], request.signal) };
+          } catch (error) { return json({ reply: error instanceof Error ? error.message : "OpenRouter failed.", steps: [], actions: [] }, 502); }
         } else {
           const key = apiKey();
           out = agent.api === "anthropic"

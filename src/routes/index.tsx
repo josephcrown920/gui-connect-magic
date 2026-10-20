@@ -1,3 +1,4 @@
+import { studioFetch } from "@/lib/studio-client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/engines";
 import { generateImage, generateVideo } from "@/lib/generate";
 import { renderTimeline, download } from "@/lib/export";
+import { PerformanceStudio } from "@/components/PerformanceStudio";
 import { AgenticStudio } from "@/components/AgenticStudio";
 import { NodeCanvas } from "@/components/NodeCanvas";
 import { cn } from "@/lib/utils";
@@ -212,8 +214,9 @@ function Editor() {
     }
   }
 
-  function addAsset(url: string, kind: "image" | "video", name: string) {
-    setAssets((x) => [...x, { id: uid(), name, kind, url, dur: kind === "video" ? 6 : 4 }]);
+  async function addAsset(url: string, kind: "image" | "video", name: string) {
+    const dur = kind === "video" ? await probe(url, kind) : 4;
+    setAssets((x) => [...x, { id: uid(), name, kind, url, dur }]);
     setMsgs((m) => [...m, { role: "assistant", agent, text: `Pulled ${name} from the canvas into the bin.` }]);
   }
 
@@ -337,7 +340,7 @@ function Editor() {
     setMsgs((m) => [...m, { role: "user", text: t }]);
     setBusy(true);
     try {
-      const r = await fetch("/api/agent", {
+      const r = await studioFetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -347,12 +350,12 @@ function Editor() {
           clips: clips.map((c) => ({ id: c.id, assetId: c.assetId, track: c.track, start: c.start, dur: c.dur })),
         }),
       });
-      const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[] };
-      if (!r.ok) throw new Error(d.reply ?? "The editing agent could not respond.");
+      const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[]; error?: { message?: string } };
+      if (!r.ok) throw new Error(d.error?.message ?? d.reply ?? "The editing agent could not respond.");
       if (d.actions?.length) applyActions(d.actions);
       setMsgs((m) => [...m, { role: "assistant", agent, text: d.reply, steps: d.steps }]);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", agent, text: "I lost connection to the editing brain. Try that again." }]);
+    } catch (error) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: error instanceof Error ? error.message : "I lost connection to the editing brain. Try that again." }]);
     } finally {
       setBusy(false);
     }
@@ -392,6 +395,7 @@ function Editor() {
           setPreviousCut(clips); setPlaying(false); setPlayhead(0); setClips(assembled); setSel(assembled[0]?.id ?? null);
           setAssets(current => [...new Map([...current, ...media].map(a => [a.id, a])).values()]);
         }} />
+      <PerformanceStudio onAsset={addAsset} />
       {previousCut && <button className="mx-3 mt-2 self-start rounded-lg border border-border px-3 py-1 text-xs" onClick={() => { setClips(previousCut); setPreviousCut(null); setPlayhead(0); setPlaying(false); }}>Undo production assembly</button>}
 
 

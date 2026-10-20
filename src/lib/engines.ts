@@ -8,26 +8,32 @@ export type Engine = {
   available: boolean;
 };
 
-/** Image engines. Seedream is the requested default but is not served by the gateway. */
+/** Media models use fal when configured; gateway-only choices use Lovable AI. */
 export const IMAGE_ENGINES: Engine[] = [
-  { id: "seedream", name: "Seedream", note: "Not served on this workspace yet", available: false },
+  { id: "seedream", name: "Seedream 5.0 Pro · fal", model: "seedream-5-pro", note: "Requires FAL_KEY", available: true },
+  { id: "flux", name: "FLUX.2 Pro · fal", model: "flux-2-pro", note: "Requires FAL_KEY", available: true },
+  { id: "gptimage2", name: "GPT Image 2 · fal", model: "gpt-image-2", note: "Requires FAL_KEY", available: true },
   { id: "sunburst", name: "GPT Image 2.5 Sunburst", model: "openai/gpt-image-2.5-sunburst", note: "Default · photoreal plates & edits", available: true },
   { id: "flare", name: "GPT Image 2.5 Flare", model: "openai/gpt-image-2.5-flare", note: "Faster, lighter plates", available: true },
   { id: "gemini3pro", name: "Gemini 3 Pro Image", model: "google/gemini-3-pro-image", note: "Strong typography & composition", available: true },
   { id: "gemini31", name: "Gemini 3.1 Flash Image", model: "google/gemini-3.1-flash-image", note: "Fast iteration", available: true },
 ];
 
-/** Video engines. Seedance is the requested default but is not served by the gateway. */
+/** Seedance 2.5 is the requested default. */
 export const VIDEO_ENGINES: Engine[] = [
-  { id: "seedance", name: "Seedance", note: "Not served on this workspace yet", available: false },
+  { id: "seedance", name: "Seedance 2.5 · fal", model: "seedance-2.5", note: "Requires FAL_KEY", available: true },
+  { id: "wan", name: "Wan 2.7 · fal", model: "wan-2.7", note: "Requires FAL_KEY", available: true },
+  { id: "minimax", name: "MiniMax H3 Max · fal", model: "h3-max", note: "Requires FAL_KEY", available: true },
+  { id: "ltx", name: "LTX 2.3 · fal", model: "ltx-2.3", note: "Requires FAL_KEY", available: true },
   { id: "veo31", name: "Veo 3.1", model: "google/veo-3.1", note: "Best motion fidelity", available: true },
   { id: "veo31fast", name: "Veo 3.1 Fast", model: "google/veo-3.1-fast", note: "Default · quick motion clips", available: true },
   { id: "veo31lite", name: "Veo 3.1 Lite", model: "google/veo-3.1-lite", note: "Cheapest drafts", available: true },
+  { id: "klingomni", name: "Kling Omni O3 Pro · fal", model: "kling-o3-pro", note: "Requires FAL_KEY", available: true },
   { id: "omni", name: "Gemini Omni 1.1", model: "google/gemini-omni-1.1-flash", note: "Image-to-video & continuation", available: true },
 ];
 
 export const DEFAULT_IMAGE_ENGINE = "sunburst";
-export const DEFAULT_VIDEO_ENGINE = "veo31fast";
+export const DEFAULT_VIDEO_ENGINE = "seedance";
 
 export function engineModel(list: Engine[], id: string) {
   return list.find((e) => e.id === id && e.available)?.model;

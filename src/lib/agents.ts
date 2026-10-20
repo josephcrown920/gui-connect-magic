@@ -1,4 +1,4 @@
-export type AgentApi = "openai" | "anthropic" | "modelark";
+export type AgentApi = "openai" | "anthropic" | "modelark" | "openrouter";
 
 export type Agent = {
   id: string;
@@ -26,7 +26,9 @@ export const AGENTS: Agent[] = [
   { id: "ark-seed", name: "Seed 1.6", short: "SD", role: "ModelArk · reasoning & shot logic", model: "doubao-seed-1-6", api: "modelark", available: true, accent: "var(--chart-3)", provider: "ModelArk" },
   { id: "ark-skylark", name: "Skylark Lite", short: "SK", role: "ModelArk · fast trims", model: "skylark-lite", api: "modelark", available: true, accent: "var(--chart-3)", provider: "ModelArk" },
   { id: "glm", name: "GLM", short: "GL", role: "Rapid assembly", available: false, accent: "var(--chart-2)", provider: "Not connected" },
-  { id: "deepseek", name: "DeepSeek", short: "DS", role: "Speech alignment · silence strip", available: false, accent: "var(--chart-4)", provider: "Not connected" },
+  { id: "deepseek", name: "DeepSeek V4.1 Flash", short: "DS", role: "Script and edit planning", model: "deepseek/deepseek-v4.1-flash", api: "openrouter", available: true, accent: "var(--chart-4)", provider: "OpenRouter" },
+  { id: "qwen", name: "Qwen 3.8 Flash", short: "QW", role: "Fast script and edit planning", model: "qwen/qwen3.8-flash", api: "openrouter", available: true, accent: "var(--chart-3)", provider: "OpenRouter" },
+  { id: "minimax", name: "MiniMax M3", short: "MM", role: "Script and production reasoning", model: "minimax/minimax-m3", api: "openrouter", available: true, accent: "var(--chart-5)", provider: "OpenRouter" },
   { id: "dola", name: "Dola", short: "DL", role: "Motion & transition FX", available: false, accent: "var(--chart-5)", provider: "Not connected" },
 ];
 
