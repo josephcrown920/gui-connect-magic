@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GATEWAY, ARK_BASE, apiKey, arkKey } from "@/lib/gateway.server";
 import { AGENTS, agentById } from "@/lib/agents";
+import { planProduction } from "@/lib/production.server";
+import { ZodError } from "zod";
 
 type Body = {
   agent: string;
@@ -130,7 +132,18 @@ export const Route = createFileRoute("/api/agent")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const b = (await request.json()) as Body;
+        let raw: unknown;
+        try { raw = await request.json(); }
+        catch { return Response.json({ error: "Invalid JSON request." }, { status: 400 }); }
+        if ((raw as { operation?: string })?.operation === "production") {
+          const key = process.env["LOVABLE_API_KEY"];
+          if (!key) return Response.json({ error: "Connect Lovable AI before starting production." }, { status: 503 });
+          try { return Response.json(await planProduction(raw, key, request.signal)); }
+          catch (error) {
+            return Response.json({ error: error instanceof ZodError ? "The scene plan was invalid. Try a clearer or shorter brief." : error instanceof Error ? error.message : "Production planning failed." }, { status: error instanceof ZodError ? 400 : 502 });
+          }
+        }
+        const b = raw as Body;
         const agent = agentById(b.agent);
         const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } });
 

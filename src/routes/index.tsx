@@ -12,6 +12,7 @@ import {
 } from "@/lib/engines";
 import { generateImage, generateVideo } from "@/lib/generate";
 import { renderTimeline, download } from "@/lib/export";
+import { AgenticStudio } from "@/components/AgenticStudio";
 import { NodeCanvas } from "@/components/NodeCanvas";
 import { cn } from "@/lib/utils";
 import scene1 from "@/assets/scene1.jpg";
@@ -66,6 +67,7 @@ function Editor() {
     { id: "c2", assetId: "a2", track: "V1", start: 4, dur: 3, inPoint: 0, name: "raincoat_look", volume: 1, opacity: 1, speed: 1, filter: "none" },
     { id: "c3", assetId: "a3", track: "V1", start: 7, dur: 5, inPoint: 0, name: "dawn_skyline", volume: 1, opacity: 1, speed: 1, filter: "none" },
   ]);
+  const [previousCut, setPreviousCut] = useState<Clip[] | null>(null);
   const [sel, setSel] = useState<string | null>("c1");
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -90,7 +92,7 @@ function Editor() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
-  const duration = useMemo(() => Math.max(12, ...clips.map((c) => c.start + c.dur)), [clips]);
+  const duration = useMemo(() => Math.max(0.1, ...clips.map((c) => c.start + c.dur)), [clips]);
   const assetOf = useCallback((id: string) => assets.find((a) => a.id === id), [assets]);
   const selected = clips.find((c) => c.id === sel) ?? null;
 
@@ -130,7 +132,7 @@ function Editor() {
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !videoClip) return;
-    const want = videoClip.inPoint + (playhead - videoClip.start);
+    const want = videoClip.inPoint + (playhead - videoClip.start) * videoClip.speed;
     if (Math.abs(v.currentTime - want) > 0.3) v.currentTime = Math.max(0, want);
     v.playbackRate = videoClip.speed;
     v.volume = videoClip.volume;
@@ -346,6 +348,7 @@ function Editor() {
         }),
       });
       const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[] };
+      if (!r.ok) throw new Error(d.reply ?? "The editing agent could not respond.");
       if (d.actions?.length) applyActions(d.actions);
       setMsgs((m) => [...m, { role: "assistant", agent, text: d.reply, steps: d.steps }]);
     } catch {
@@ -384,6 +387,13 @@ function Editor() {
           </button>
         </div>
       </header>
+      <AgenticStudio assets={assets} imageEngine={imgEngine} videoEngine={vidEngine} disabled={busy || genBusy || exporting}
+        onAssemble={(media, assembled) => {
+          setPreviousCut(clips); setPlaying(false); setPlayhead(0); setClips(assembled); setSel(assembled[0]?.id ?? null);
+          setAssets(current => [...new Map([...current, ...media].map(a => [a.id, a])).values()]);
+        }} />
+      {previousCut && <button className="mx-3 mt-2 self-start rounded-lg border border-border px-3 py-1 text-xs" onClick={() => { setClips(previousCut); setPreviousCut(null); setPlayhead(0); setPlaying(false); }}>Undo production assembly</button>}
+
 
       {pickerOpen && (
         <div className="animate-rise border-b border-border bg-card p-3">
