@@ -275,6 +275,8 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
             <option value="claude">Director: Claude Sonnet</option>
             <option value="qwen">Director: Qwen</option>
             <option value="minimax">Director: MiniMax</option>
+            <option value="qwen-open">Director: Qwen3 32B · open weights</option>
+            <option value="deepseek-open">Director: DeepSeek V3.2 · open weights</option>
           </select>
           <select
             aria-label="Generated scene format"

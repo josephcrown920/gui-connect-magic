@@ -10,6 +10,7 @@ export type Engine = {
 
 /** Media models use fal when configured; gateway-only choices use Lovable AI. */
 export const IMAGE_ENGINES: Engine[] = [
+  { id: "fluxschnell", name: "FLUX Schnell · Apache-2.0", model: "flux-schnell", note: "Open-source weights · hosted inference via fal", available: true },
   { id: "seedream", name: "Seedream 5.0 Pro · fal", model: "seedream-5-pro", note: "Requires FAL_KEY", available: true },
   { id: "flux", name: "FLUX.2 Pro · fal", model: "flux-2-pro", note: "Requires FAL_KEY", available: true },
   { id: "gptimage2", name: "GPT Image 2 · fal", model: "gpt-image-2", note: "Requires FAL_KEY", available: true },
@@ -21,10 +22,11 @@ export const IMAGE_ENGINES: Engine[] = [
 
 /** Seedance 2.5 is the requested default. */
 export const VIDEO_ENGINES: Engine[] = [
+  { id: "wanopen", name: "Wan 2.2 · Apache-2.0", model: "wan-2.2", note: "Open-source weights · hosted inference via fal", available: true },
   { id: "seedance", name: "Seedance 2.5 · fal", model: "seedance-2.5", note: "Requires FAL_KEY", available: true },
   { id: "wan", name: "Wan 2.7 · fal", model: "wan-2.7", note: "Requires FAL_KEY", available: true },
   { id: "minimax", name: "MiniMax H3 Max · fal", model: "h3-max", note: "Requires FAL_KEY", available: true },
-  { id: "ltx", name: "LTX 2.3 · fal", model: "ltx-2.3", note: "Requires FAL_KEY", available: true },
+  { id: "ltx", name: "LTX 2.3 · community-license weights", model: "ltx-2.3", note: "Requires FAL_KEY", available: true },
   { id: "veo31", name: "Veo 3.1", model: "google/veo-3.1", note: "Best motion fidelity", available: true },
   { id: "veo31fast", name: "Veo 3.1 Fast", model: "google/veo-3.1-fast", note: "Default · quick motion clips", available: true },
   { id: "veo31lite", name: "Veo 3.1 Lite", model: "google/veo-3.1-lite", note: "Cheapest drafts", available: true },

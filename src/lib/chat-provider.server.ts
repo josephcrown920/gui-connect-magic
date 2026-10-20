@@ -15,6 +15,8 @@ export function chatTarget(preferred: "auto" | "openrouter" | "lovable" = "auto"
 }
 
 export const PLANNERS = [
+  { id: "qwen-open", name: "Qwen3 32B · open weights", model: "qwen/qwen3-32b" },
+  { id: "deepseek-open", name: "DeepSeek V3.2 · open weights", model: "deepseek/deepseek-v3.2" },
   { id: "astra", name: "GPT-6 Astra", model: "openai/gpt-6-astra" },
   { id: "deepseek", name: "DeepSeek V4.1 Flash", model: "deepseek/deepseek-v4.1-flash" },
   { id: "claude", name: "Claude Sonnet 5", model: "anthropic/claude-sonnet-5" },
@@ -25,7 +27,9 @@ export const PLANNERS = [
 export function plannerModel(id: string | undefined) {
   const planner = PLANNERS.find((p) => p.id === (id ?? "astra"));
   if (!planner) throw new Error("Choose a supported planning agent.");
-  return process.env[`STUDIO_${planner.id.toUpperCase()}_MODEL`] ?? planner.model;
+  return (
+    process.env[`STUDIO_${planner.id.toUpperCase().replace(/-/g, "_")}_MODEL`] ?? planner.model
+  );
 }
 
 export async function chatCompletion(

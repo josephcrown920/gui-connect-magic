@@ -14,6 +14,8 @@ export type Agent = {
 };
 
 export const AGENTS: Agent[] = [
+  { id: "qwen-open", name: "Qwen3 32B · open weights", short: "Q3", role: "Open-weight script and edit planner", model: "qwen/qwen3-32b", api: "openrouter", available: true, accent: "var(--chart-3)", provider: "OpenRouter" },
+  { id: "deepseek-open", name: "DeepSeek V3.2 · open weights", short: "D3", role: "Open-weight script and edit planner", model: "deepseek/deepseek-v3.2", api: "openrouter", available: true, accent: "var(--chart-4)", provider: "OpenRouter" },
   { id: "omni-reader", name: "Qwen Omni · Understand", short: "OM", role: "Text chat · image and video understanding", model: "qwen/qwen3.8-omni-flash", api: "openrouter", available: true, accent: "var(--chart-5)", provider: "OpenRouter" },
   { id: "orchestrator", name: "Orchestrator", short: "OR", role: "Runs the crew · routes every brief to the right agent", model: "openai/gpt-6-astra", api: "openai", available: true, accent: "var(--chart-1)", provider: "Lovable AI" },
   { id: "astra", name: "GPT-6 Astra", short: "AS", role: "Creative director · pacing & structure", model: "openai/gpt-6-astra", api: "openai", available: true, accent: "var(--chart-1)", provider: "Lovable AI" },

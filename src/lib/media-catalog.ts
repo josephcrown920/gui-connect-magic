@@ -1,8 +1,9 @@
 /** Verified fal endpoint IDs; kept separate from Lovable gateway model IDs. */
 export const FAL_IMAGES: Record<
   string,
-  { create: string; edit: string; defaults?: Record<string, unknown> }
+  { create: string; edit?: string; defaults?: Record<string, unknown> }
 > = {
+  fluxschnell: { create: "fal-ai/flux/schnell", defaults: { num_inference_steps: 4 } },
   sunburst: {
     create: "openai/gpt-image-2.5/sunburst/text-to-image",
     edit: "openai/gpt-image-2.5/sunburst/edit",
@@ -23,6 +24,11 @@ export const FAL_VIDEOS: Record<
   string,
   { text: string; image: string; defaults: Record<string, unknown> }
 > = {
+  wanopen: {
+    text: "fal-ai/wan/v2.2-a14b/text-to-video",
+    image: "fal-ai/wan/v2.2-a14b/image-to-video",
+    defaults: { resolution: "720p" },
+  },
   omni: {
     text: "google/gemini-omni-flash/v1.1/text-to-video",
     image: "google/gemini-omni-flash/v1.1/image-to-video",
@@ -63,7 +69,9 @@ export function falVideoInput(engine: string, prompt: string, duration: number, 
     input: {
       ...config.defaults,
       prompt,
-      duration: ["seedance", "klingomni"].includes(engine) ? String(duration) : duration,
+      ...(engine === "wanopen"
+        ? { num_frames: duration * 16 + 1, frames_per_second: 16 }
+        : { duration: ["seedance", "klingomni"].includes(engine) ? String(duration) : duration }),
       aspect_ratio: "16:9",
       ...(image ? { image_url: image } : {}),
     },

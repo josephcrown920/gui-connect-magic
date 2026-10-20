@@ -67,9 +67,10 @@ provider-specific duration/format constraints still apply.
 fal videos use signed, seven-day job handles that restrict polling/downloading to
 known model endpoints. Rotating FAL_KEY invalidates old job handles. Drafts retain
 these handles for recovery; image-generation requests do not have the same retry
-guarantees. No provider key is returned to the browser. This implementation runs
-inside the studio's server; a separately hosted, cross-project AI service has not
-been deployed yet.
+guarantees. No provider key is returned to the browser. The same handlers also power a standalone service in `shared-ai/`. Set
+`SHARED_AI_BASE_URL`, `SHARED_AI_APP_ID` and `SHARED_AI_APP_KEY` on each client app
+to route through it. Provider keys then live only on the shared service. Deployment
+templates are prepared; no external backend has been activated yet.
 
 Live generation requires the secrets, paid credits, and account access to the
 selected models. These were not available for live testing in this workspace.
@@ -91,3 +92,16 @@ blob URLs to the provider. Provider limits and multimodal token charges apply.
 Attachments are inspected for the current conversation turn; they do not become
 persistent cloud media or automatically enter the production director's context.
 Live understanding remains unverified without a configured OpenRouter key.
+
+## Reuse across projects
+
+The standalone backend and deployment guide are in [shared-ai/README.md](shared-ai/README.md).
+It provides separate application credentials, model permissions, durable per-app
+job ownership, request recovery and usage limits. It includes LTX 2.3 and explicit
+open-source/open-weight options: FLUX Schnell, Wan 2.2, Qwen3 32B and DeepSeek V3.2.
+Hosted inference still costs money; LTX uses its own community license.
+
+Managed deployment templates target Render or Railway with a persistent disk.
+Netlify and Cloudflare require runtime/storage adaptations; the current Node
+service must not be described as directly deployable there. No hosting account,
+paid service, domain or provider secret is created automatically by this code.

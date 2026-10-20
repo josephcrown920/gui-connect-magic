@@ -182,3 +182,12 @@ test("performance tasks enforce their own required media", () => {
     "video",
   );
 });
+
+test("open-source Wan maps seconds to frames and LTX stays in the shared catalog", () => {
+  const wan = falVideoInput("wanopen", "city", 8);
+  assert.equal(wan.input.num_frames, 129);
+  assert.equal(wan.input.frames_per_second, 16);
+  assert.equal(wan.endpoint, "fal-ai/wan/v2.2-a14b/text-to-video");
+  assert.equal(falVideoInput("ltx", "city", 8).endpoint, "fal-ai/ltx-2.3/text-to-video");
+  assert.equal(plannerModel("qwen-open"), "qwen/qwen3-32b");
+});

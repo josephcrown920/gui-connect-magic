@@ -1,0 +1,10 @@
+**
+!src/
+!src/lib/
+!src/lib/**
+!shared-ai/
+!shared-ai/src/
+!shared-ai/src/**
+!shared-ai/package.json
+!shared-ai/package-lock.json
+!shared-ai/Dockerfile
