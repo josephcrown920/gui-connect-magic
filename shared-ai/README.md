@@ -180,3 +180,11 @@ The chat picker and production director picker include Qwen3-VL 2B/4B, Nemotron 
 Qwen accepts image attachments through the OpenAI-compatible endpoint. Video uploads are rejected with instructions to extract frames or select Qwen Omni; frame extraction is not automated here. These models return text and edit decisions, not generated images/video. Add the catalog IDs (`qwen-vl-2b`, `qwen-vl-4b`, `nemotron-nano`, `nemotron-super`, `nemotron-ultra`, `minimax-ollama`) to a shared application's `allowedModels` to permit them.
 
 A published backend cannot reach the Ollama daemon in this temporary ChatGPT workspace. Run Ollama alongside your backend or use a protected reachable HTTPS endpoint; never expose an unauthenticated Ollama port publicly. In Docker, localhost means the container itself. Set an appropriate protected endpoint instead. Ollama's API does not enforce `OLLAMA_API_KEY` itself; remote deployments need an authentication proxy. No cloud-to-paid-provider fallback is performed.
+
+### Start the local server pair
+
+With Node 24+, dependencies installed and `ollama` on PATH, run `npm run ai:local` from the repository root. This starts Ollama if needed, starts the shared backend on loopback port 8787, creates an application credential limited to the Ollama catalog, and saves the studio connection in the ignored `.env.local`. The studio owner access code is `STUDIO_ACCESS_TOKEN` in that private file. Existing local credentials are reused on subsequent runs. Logs, SQLite data and PID files are in the ignored `shared-ai/.runtime.local/` directory.
+
+Start the studio using `node --env-file=.env.local node_modules/vite/bin/vite.js --host 127.0.0.1`. The backend and Ollama remain private to the machine. This command restarts processes; it does not provide permanent hosting or OS boot startup. The free cloud models still use your Ollama account allowance.
+
+For published sites using only Ollama cloud models, Ollama's quickstart also supports calling `https://ollama.com/v1/chat/completions` directly with a server-only API key. That avoids hosting a local Ollama daemon. Local Qwen weights still require a machine running Ollama. No public tunnel or paid host is configured by local setup.

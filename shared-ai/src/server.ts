@@ -49,7 +49,7 @@ const server = createServer(async (incoming, outgoing) => {
   }
 });
 server.requestTimeout = 360000;
-server.listen(Number(process.env["PORT"] ?? 8787), "0.0.0.0", () =>
+server.listen(Number(process.env["PORT"] ?? 8787), process.env["SHARED_AI_HOST"] ?? "0.0.0.0", () =>
   console.log(`Shared AI backend listening on ${(server.address() as { port: number }).port}`),
 );
 for (const signal of ["SIGTERM", "SIGINT"])
