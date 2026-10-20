@@ -213,12 +213,22 @@ export async function handleAgent(request: Request) {
       { status: 400 },
     );
   const attachments = parsedAttachments.data;
-  if (attachments.length && b.agent !== "omni-reader")
+  const agent = agentById(b.agent);
+  if (attachments.length && b.agent !== "omni-reader" && !agent.vision)
     return Response.json(
-      { error: { message: "Choose Qwen Omni · Understand to inspect attached media." } },
+      { error: { message: "Choose Qwen Omni or Qwen3-VL to inspect attached images." } },
       { status: 400 },
     );
-  const agent = agentById(b.agent);
+  if (agent.api === "ollama" && attachments.some((a) => a.kind === "video"))
+    return Response.json(
+      {
+        error: {
+          message:
+            "Qwen3-VL accepts images here. Attach extracted video frames, or choose Qwen Omni for video files.",
+        },
+      },
+      { status: 400 },
+    );
   const json = (v: unknown, status = 200) =>
     new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } });
 
@@ -244,11 +254,15 @@ export async function handleAgent(request: Request) {
   let out: { text?: string; error?: string; status?: number };
   if (agent.api === "modelark") {
     out = await runModelArk(agent.model, system, user, b.history);
-  } else if (agent.api === "openrouter" || process.env["OPENROUTER_API_KEY"]) {
+  } else if (
+    agent.api === "ollama" ||
+    agent.api === "openrouter" ||
+    process.env["OPENROUTER_API_KEY"]
+  ) {
     try {
       out = {
         text: await chatCompletion(
-          chatTarget("openrouter"),
+          chatTarget(agent.api === "ollama" ? "ollama" : "openrouter"),
           agent.model,
           [
             { role: "system", content: system },
@@ -294,6 +308,7 @@ export async function handleAgent(request: Request) {
 export function providerReadiness() {
   return {
     providers: {
+      ollama: Boolean(process.env["OLLAMA_BASE_URL"]),
       openrouter: Boolean(process.env["OPENROUTER_API_KEY"]),
       fal: Boolean(process.env["FAL_KEY"]),
       lovable: Boolean(process.env["LOVABLE_API_KEY"]),

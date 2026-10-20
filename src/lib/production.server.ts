@@ -1,3 +1,4 @@
+import { OLLAMA_MODELS } from "./ollama-models.ts";
 import { chatTarget, chatCompletion, plannerModel } from "./chat-provider.server.ts";
 import { productionRequestSchema, validatePlan } from "./production.ts";
 
@@ -11,7 +12,7 @@ async function specialist(
   signal?: AbortSignal,
 ) {
   const text = await chatCompletion(
-    chatTarget(provider),
+    chatTarget(OLLAMA_MODELS.some((m) => m.id === planner) ? "ollama" : provider),
     plannerModel(planner),
     [
       { role: "system", content: `${role}\n${schemaInstructions}` },

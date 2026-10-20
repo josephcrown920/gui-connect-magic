@@ -51,7 +51,21 @@ export type ProductionPlan = z.infer<typeof productionPlanSchema>;
 export const productionRequestSchema = z.object({
   brief: z.string().trim().min(1).max(6000),
   planner: z
-    .enum(["astra", "deepseek", "claude", "qwen", "minimax", "qwen-open", "deepseek-open"])
+    .enum([
+      "astra",
+      "deepseek",
+      "claude",
+      "qwen",
+      "minimax",
+      "qwen-open",
+      "deepseek-open",
+      "qwen-vl-2b",
+      "qwen-vl-4b",
+      "nemotron-nano",
+      "nemotron-super",
+      "nemotron-ultra",
+      "minimax-ollama",
+    ])
     .optional(),
   provider: z.enum(["auto", "openrouter", "lovable"]).default("auto"),
   assets: z.array(mediaSchema).max(200),

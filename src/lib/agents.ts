@@ -1,4 +1,5 @@
-export type AgentApi = "openai" | "anthropic" | "modelark" | "openrouter";
+import { OLLAMA_MODELS } from "./ollama-models.ts";
+export type AgentApi = "openai" | "anthropic" | "modelark" | "openrouter" | "ollama";
 
 export type Agent = {
   id: string;
@@ -8,12 +9,24 @@ export type Agent = {
   model?: string;
   api?: AgentApi;
   available: boolean;
+  vision?: boolean;
   accent: string;
   /** Shown in the picker so the user knows where the agent runs. */
   provider: string;
 };
 
 export const AGENTS: Agent[] = [
+  ...OLLAMA_MODELS.map((m) => ({
+    ...m,
+    short: m.vision ? "QV" : "OL",
+    role: m.vision
+      ? "Image understanding and edit planning"
+      : "Reasoning, scripts and production planning",
+    api: "ollama" as const,
+    available: true,
+    accent: "var(--chart-3)",
+    provider: "Ollama",
+  })),
   { id: "qwen-open", name: "Qwen3 32B · open weights", short: "Q3", role: "Open-weight script and edit planner", model: "qwen/qwen3-32b", api: "openrouter", available: true, accent: "var(--chart-3)", provider: "OpenRouter" },
   { id: "deepseek-open", name: "DeepSeek V3.2 · open weights", short: "D3", role: "Open-weight script and edit planner", model: "deepseek/deepseek-v3.2", api: "openrouter", available: true, accent: "var(--chart-4)", provider: "OpenRouter" },
   { id: "omni-reader", name: "Qwen Omni · Understand", short: "OM", role: "Text chat · image and video understanding", model: "qwen/qwen3.8-omni-flash", api: "openrouter", available: true, accent: "var(--chart-5)", provider: "OpenRouter" },

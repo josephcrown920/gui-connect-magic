@@ -1,6 +1,22 @@
+import { OLLAMA_MODELS } from "./ollama-models.ts";
 import type { ChatMessage } from "./multimodal.ts";
 export type ChatTarget = { url: string; key: string; provider: string };
-export function chatTarget(preferred: "auto" | "openrouter" | "lovable" = "auto"): ChatTarget {
+export function chatTarget(
+  preferred: "auto" | "openrouter" | "lovable" | "ollama" = "auto",
+): ChatTarget {
+  if (preferred === "ollama") {
+    const base = new URL(process.env["OLLAMA_BASE_URL"] ?? "http://127.0.0.1:11434");
+    if (
+      base.protocol !== "https:" &&
+      !(base.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(base.hostname))
+    )
+      throw new Error("Use HTTPS for remote Ollama servers.");
+    return {
+      url: `${base.href.replace(/\/$/, "")}/v1/chat/completions`,
+      key: process.env["OLLAMA_API_KEY"] ?? "",
+      provider: "Ollama",
+    };
+  }
   if (preferred === "openrouter" || (preferred === "auto" && process.env["OPENROUTER_API_KEY"])) {
     const key = process.env["OPENROUTER_API_KEY"];
     if (!key) throw new Error("Add OPENROUTER_API_KEY to the server secrets to use OpenRouter.");
@@ -15,6 +31,7 @@ export function chatTarget(preferred: "auto" | "openrouter" | "lovable" = "auto"
 }
 
 export const PLANNERS = [
+  ...OLLAMA_MODELS,
   { id: "qwen-open", name: "Qwen3 32B · open weights", model: "qwen/qwen3-32b" },
   { id: "deepseek-open", name: "DeepSeek V3.2 · open weights", model: "deepseek/deepseek-v3.2" },
   { id: "astra", name: "GPT-6 Astra", model: "openai/gpt-6-astra" },
@@ -44,7 +61,7 @@ export async function chatCompletion(
       ? AbortSignal.any([signal, AbortSignal.timeout(120_000)])
       : AbortSignal.timeout(120_000),
     headers: {
-      Authorization: `Bearer ${target.key}`,
+      ...(target.key ? { Authorization: `Bearer ${target.key}` } : {}),
       "Content-Type": "application/json",
       "X-Title": "Reel Video Studio",
       ...(target.provider === "Lovable AI" ? { "X-Lovable-AIG-SDK": "fetch" } : {}),
@@ -52,6 +69,7 @@ export async function chatCompletion(
     body: JSON.stringify({
       model,
       messages,
+      ...(target.provider === "Ollama" ? { think: false } : {}),
       max_tokens: 6000,
       response_format: { type: "json_object" },
     }),

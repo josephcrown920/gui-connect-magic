@@ -1,3 +1,4 @@
+import { OLLAMA_MODELS } from "../lib/ollama-models";
 import { saveStudioAccess, studioFetch } from "@/lib/studio-client";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, Square, RotateCcw } from "lucide-react";
@@ -270,6 +271,11 @@ export function AgenticStudio({ assets, imageEngine, videoEngine, disabled, onAs
             onChange={(e) => setPlanner(e.target.value)}
             className="rounded-lg border border-border bg-background p-2 text-xs"
           >
+            {OLLAMA_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                Director: {m.name}
+              </option>
+            ))}
             <option value="astra">Director: GPT-6 Astra</option>
             <option value="deepseek">Director: DeepSeek</option>
             <option value="claude">Director: Claude Sonnet</option>

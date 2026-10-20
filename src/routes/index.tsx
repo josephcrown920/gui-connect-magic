@@ -340,7 +340,7 @@ function Editor() {
     if (!t || busy) return;
     setBrief("");
     const contextAsset = assets.find(a => a.id === contextAssetId && a.kind !== "audio");
-    const requestAgent = contextAsset ? "omni-reader" : agent;
+    const requestAgent = contextAsset && !agentById(agent).vision ? "omni-reader" : agent;
     if (contextAsset) setAgent(requestAgent);
     setMsgs((m) => [...m, { role: "user", text: contextAsset ? `${t} (Attached: ${contextAsset.name})` : t }]);
     setBusy(true);
@@ -638,7 +638,7 @@ function Editor() {
             ))}
           </div>
           <label className="border-t border-border px-3 py-2 text-xs text-muted-foreground">Media to inspect · Qwen Omni
-            <select aria-label="Attach image or video for understanding" value={contextAssetId} disabled={busy} onChange={e => { setContextAssetId(e.target.value); if (e.target.value) setAgent("omni-reader"); }} className="mt-1 w-full rounded border border-border bg-background p-2">
+            <select aria-label="Attach image or video for understanding" value={contextAssetId} disabled={busy} onChange={e => { setContextAssetId(e.target.value); if (e.target.value && !agentById(agent).vision) setAgent("omni-reader"); }} className="mt-1 w-full rounded border border-border bg-background p-2">
               <option value="">Text only · no attachment</option>
               {assets.filter(a => a.kind !== "audio").map(a => <option key={a.id} value={a.id}>{a.name} · {a.kind}</option>)}
             </select>

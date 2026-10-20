@@ -172,3 +172,11 @@ npx tsc --noEmit
 ```
 
 Provider calls are mocked in tests; live inference needs configured paid accounts.
+
+### Ollama: local Qwen vision and cloud Nemotron
+
+The chat picker and production director picker include Qwen3-VL 2B/4B, Nemotron 3 Nano/Super/Ultra, and MiniMax M3.1 Flash through Ollama. Configure `OLLAMA_BASE_URL` on the backend (default `http://127.0.0.1:11434`). Pull `qwen3-vl:2b` or `qwen3-vl:4b` on the same Ollama daemon for local vision. Cloud tags require `ollama signin` on that daemon and use the account's cloud allowance. Local weights use your hardware; cloud weights are not downloaded locally.
+
+Qwen accepts image attachments through the OpenAI-compatible endpoint. Video uploads are rejected with instructions to extract frames or select Qwen Omni; frame extraction is not automated here. These models return text and edit decisions, not generated images/video. Add the catalog IDs (`qwen-vl-2b`, `qwen-vl-4b`, `nemotron-nano`, `nemotron-super`, `nemotron-ultra`, `minimax-ollama`) to a shared application's `allowedModels` to permit them.
+
+A published backend cannot reach the Ollama daemon in this temporary ChatGPT workspace. Run Ollama alongside your backend or use a protected reachable HTTPS endpoint; never expose an unauthenticated Ollama port publicly. In Docker, localhost means the container itself. Set an appropriate protected endpoint instead. Ollama's API does not enforce `OLLAMA_API_KEY` itself; remote deployments need an authentication proxy. No cloud-to-paid-provider fallback is performed.
