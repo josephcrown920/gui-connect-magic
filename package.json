@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "node --experimental-strip-types --test tests/*.test.ts shared-ai/tests/*.test.ts",
+    "ai:local": "node --experimental-strip-types shared-ai/scripts/start-local.mjs"
   },
   "overrides": {
     "rolldown": "1.2.1"

@@ -1,3 +1,5 @@
+import { attachMedia } from "@/lib/attach-media";
+import { studioFetch } from "@/lib/studio-client";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -12,6 +14,8 @@ import {
 } from "@/lib/engines";
 import { generateImage, generateVideo } from "@/lib/generate";
 import { renderTimeline, download } from "@/lib/export";
+import { PerformanceStudio } from "@/components/PerformanceStudio";
+import { AgenticStudio } from "@/components/AgenticStudio";
 import { NodeCanvas } from "@/components/NodeCanvas";
 import { cn } from "@/lib/utils";
 import scene1 from "@/assets/scene1.jpg";
@@ -66,6 +70,7 @@ function Editor() {
     { id: "c2", assetId: "a2", track: "V1", start: 4, dur: 3, inPoint: 0, name: "raincoat_look", volume: 1, opacity: 1, speed: 1, filter: "none" },
     { id: "c3", assetId: "a3", track: "V1", start: 7, dur: 5, inPoint: 0, name: "dawn_skyline", volume: 1, opacity: 1, speed: 1, filter: "none" },
   ]);
+  const [previousCut, setPreviousCut] = useState<Clip[] | null>(null);
   const [sel, setSel] = useState<string | null>("c1");
   const [playhead, setPlayhead] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -76,6 +81,7 @@ function Editor() {
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "assistant", agent: "astra", text: "I'm your co-editor. Drop your footage in the bin on the left, then tell me the cut you want — I'll lay it on the timeline and we iterate from there." },
   ]);
+  const [contextAssetId, setContextAssetId] = useState("");
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
@@ -90,7 +96,7 @@ function Editor() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
-  const duration = useMemo(() => Math.max(12, ...clips.map((c) => c.start + c.dur)), [clips]);
+  const duration = useMemo(() => Math.max(0.1, ...clips.map((c) => c.start + c.dur)), [clips]);
   const assetOf = useCallback((id: string) => assets.find((a) => a.id === id), [assets]);
   const selected = clips.find((c) => c.id === sel) ?? null;
 
@@ -130,7 +136,7 @@ function Editor() {
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !videoClip) return;
-    const want = videoClip.inPoint + (playhead - videoClip.start);
+    const want = videoClip.inPoint + (playhead - videoClip.start) * videoClip.speed;
     if (Math.abs(v.currentTime - want) > 0.3) v.currentTime = Math.max(0, want);
     v.playbackRate = videoClip.speed;
     v.volume = videoClip.volume;
@@ -210,8 +216,9 @@ function Editor() {
     }
   }
 
-  function addAsset(url: string, kind: "image" | "video", name: string) {
-    setAssets((x) => [...x, { id: uid(), name, kind, url, dur: kind === "video" ? 6 : 4 }]);
+  async function addAsset(url: string, kind: "image" | "video", name: string) {
+    const dur = kind === "video" ? await probe(url, kind) : 4;
+    setAssets((x) => [...x, { id: uid(), name, kind, url, dur }]);
     setMsgs((m) => [...m, { role: "assistant", agent, text: `Pulled ${name} from the canvas into the bin.` }]);
   }
 
@@ -332,24 +339,29 @@ function Editor() {
     const t = text.trim();
     if (!t || busy) return;
     setBrief("");
-    setMsgs((m) => [...m, { role: "user", text: t }]);
+    const contextAsset = assets.find(a => a.id === contextAssetId && a.kind !== "audio");
+    const requestAgent = contextAsset && !agentById(agent).vision ? "omni-reader" : agent;
+    if (contextAsset) setAgent(requestAgent);
+    setMsgs((m) => [...m, { role: "user", text: contextAsset ? `${t} (Attached: ${contextAsset.name})` : t }]);
     setBusy(true);
     try {
-      const r = await fetch("/api/agent", {
+      const attachments = contextAsset && contextAsset.kind !== "audio" ? [await attachMedia({ ...contextAsset, kind: contextAsset.kind })] : [];
+      const r = await studioFetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agent, brief: t,
+          agent: requestAgent, brief: t, attachments,
           history: msgs.slice(-8).map((m) => ({ role: m.role, text: m.text })),
           assets: assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, dur: a.dur })),
           clips: clips.map((c) => ({ id: c.id, assetId: c.assetId, track: c.track, start: c.start, dur: c.dur })),
         }),
       });
-      const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[] };
+      const d = (await r.json()) as { reply: string; steps: string[]; actions: AgentAction[]; error?: { message?: string } };
+      if (!r.ok) throw new Error(d.error?.message ?? d.reply ?? "The editing agent could not respond.");
       if (d.actions?.length) applyActions(d.actions);
-      setMsgs((m) => [...m, { role: "assistant", agent, text: d.reply, steps: d.steps }]);
-    } catch {
-      setMsgs((m) => [...m, { role: "assistant", agent, text: "I lost connection to the editing brain. Try that again." }]);
+      setMsgs((m) => [...m, { role: "assistant", agent: requestAgent, text: d.reply, steps: d.steps }]);
+    } catch (error) {
+      setMsgs((m) => [...m, { role: "assistant", agent, text: error instanceof Error ? error.message : "I lost connection to the editing brain. Try that again." }]);
     } finally {
       setBusy(false);
     }
@@ -384,6 +396,14 @@ function Editor() {
           </button>
         </div>
       </header>
+      <AgenticStudio assets={assets} imageEngine={imgEngine} videoEngine={vidEngine} disabled={busy || genBusy || exporting}
+        onAssemble={(media, assembled) => {
+          setPreviousCut(clips); setPlaying(false); setPlayhead(0); setClips(assembled); setSel(assembled[0]?.id ?? null);
+          setAssets(current => [...new Map([...current, ...media].map(a => [a.id, a])).values()]);
+        }} />
+      <PerformanceStudio onAsset={addAsset} />
+      {previousCut && <button className="mx-3 mt-2 self-start rounded-lg border border-border px-3 py-1 text-xs" onClick={() => { setClips(previousCut); setPreviousCut(null); setPlayhead(0); setPlaying(false); }}>Undo production assembly</button>}
+
 
       {pickerOpen && (
         <div className="animate-rise border-b border-border bg-card p-3">
@@ -617,6 +637,13 @@ function Editor() {
               <button key={r} onClick={() => void send(r)} className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-primary hover:text-foreground">{r}</button>
             ))}
           </div>
+          <label className="border-t border-border px-3 py-2 text-xs text-muted-foreground">Media to inspect · Qwen Omni
+            <select aria-label="Attach image or video for understanding" value={contextAssetId} disabled={busy} onChange={e => { setContextAssetId(e.target.value); if (e.target.value && !agentById(agent).vision) setAgent("omni-reader"); }} className="mt-1 w-full rounded border border-border bg-background p-2">
+              <option value="">Text only · no attachment</option>
+              {assets.filter(a => a.kind !== "audio").map(a => <option key={a.id} value={a.id}>{a.name} · {a.kind}</option>)}
+            </select>
+            <span className="mt-1 block">Upload media to the bin, then select it here. Max 20 MB; attached media is sent again with each message.</span>
+          </label>
           <form onSubmit={(e) => { e.preventDefault(); void send(brief); }} className="flex items-center gap-2 border-t border-border p-2.5">
             <input value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="Tell your co-editor what to cut…" className="flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground" />
             <button type="submit" disabled={busy || !brief.trim()} className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-40"><Send className="size-4" /></button>

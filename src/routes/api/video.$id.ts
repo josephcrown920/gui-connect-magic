@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GATEWAY, apiKey, passthrough } from "@/lib/gateway.server";
+import { handleVideoStatus } from "@/lib/api/video-status.server";
 
 export const Route = createFileRoute("/api/video/$id")({
   server: {
     handlers: {
-      GET: async ({ params }) =>
-        passthrough(await fetch(`${GATEWAY}/v1/videos/${encodeURIComponent(params.id)}`, { headers: { Authorization: `Bearer ${apiKey()}` } })),
+      GET: ({ request, params }) => handleVideoStatus(request, params.id),
     },
   },
 });

@@ -1,0 +1,23 @@
+# Paid deployment template. Review Render's displayed cost before applying.
+services:
+  - type: web
+    name: josh-shared-ai
+    runtime: docker
+    branch: feature/agentic-video-production
+    dockerfilePath: ./shared-ai/Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /health
+    disk:
+      name: shared-ai-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: FAL_KEY
+        sync: false
+      - key: SHARED_AI_APPS_JSON
+        sync: false
+      - key: SHARED_AI_DATABASE
+        value: /data/shared-ai.sqlite
